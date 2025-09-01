@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Confirmación de asistencia</title>
+  <style>
+    :root {
+      --colorFondo: #ffffff;
+      --colorBoton: #B76A38;
+      --colorTextoBoton: #ffffff;
+      --colorTextoLabel: #555555;
+      --colorTextoConfirm: #2c3e50;
+      --fuentePrincipal: 'Poppins', sans-serif;
+    }
+
+    body {
+      background: var(--colorFondo);
+      font-family: var(--fuentePrincipal);
+      margin: 0;
+      padding: 20px;
+    }
+
+    #formContainer {
+      background:#ffffff;
+      padding:20px;
+      border-radius:16px;
+      max-width:400px;
+      margin:20px auto;
+      width:100%;
+      box-sizing:border-box;
+    }
+
+    .labelForm {
+      font-size:13px;
+      font-weight:600;
+      color: var(--colorTextoLabel);
+      display:block;
+      margin-bottom:5px;
+    }
+
+    .inputForm {
+      width:100%;
+      padding:10px;
+      margin-bottom:15px;
+      border:1px solid #ccc;
+      border-radius:8px;
+      font-size:14px;
+      box-sizing:border-box;
+    }
+
+    .btnForm {
+      background: var(--colorBoton);
+      color: var(--colorTextoBoton);
+      border:none;
+      padding:10px 22px;
+      border-radius:30px;
+      cursor:pointer;
+      font-weight:600;
+      font-size:14px;
+    }
+
+    .btnForm:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    #mensajeConfirmacion {
+      font-family: var(--fuentePrincipal);
+      color: var(--colorTextoConfirm);
+      font-size:20px;
+      font-weight:700;
+      text-align:center;
+      margin-top:30px;
+      display:none;
+    }
+
+    #mensajeEspera {
+      display:none;
+      color:#666;
+      text-align:center;
+      font-size:15px;
+      margin-top:20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="formContainer">
+    <form id="formAsistencia">
+      <label class="labelForm">Nombre</label>
+      <input type="text" name="nombre" required class="inputForm">
+
+      <label class="labelForm">Teléfono</label>
+      <input type="tel" name="telefono" required class="inputForm">
+
+      <label class="labelForm">¿Asistirás?</label>
+      <select name="respuesta" id="respuesta" required class="inputForm">
+        <option value="">Selecciona una opción</option>
+        <option value="¡Claro, ahí estaré!">¡Claro, ahí estaré!</option>
+        <option value="Lo siento, no podré asistir">Lo siento, no podré asistir</option>
+      </select>
+
+      <div id="personasContainer">
+        <label class="labelForm">Confirma el número de asistentes según los lugares asignados:</label>
+        <select name="personas" id="personas" class="inputForm" required></select>
+      </div>
+
+      <div style="text-align:center; margin-top:10px;">
+        <button type="submit" class="btnForm" id="btnSubmit">Enviar por WhatsApp</button>
+      </div>
+    </form>
+
+    <p id="mensajeEspera">⏳ Enviando, por favor espera...</p>
+    <p id="mensajeConfirmacion">✅ ¡Tu confirmación ha sido enviada!</p>
+  </div>
+
+  <script>
+    const scriptURL ="https://script.google.com/macros/s/AKfycbzGPNYwsCfDjEoslSBV7wn10YiQYn9S9dJwrvObs6a-2uPPXURtWRAOCApYJMKTXjgz/exec";
+    const anfitrion = "5218127629170"; // Teléfono anfitrión
+    const evento = "Gemma & Ana – 8 de Noviembre 2025"; // Texto del evento
+
+    const form = document.getElementById("formAsistencia");
+    const confirmacion = document.getElementById("mensajeConfirmacion");
+    const mensajeEspera = document.getElementById("mensajeEspera");
+    const respuestaSelect = document.getElementById("respuesta");
+    const personasSelect = document.getElementById("personas");
+    const btnSubmit = document.getElementById("btnSubmit");
+
+    // 1. Leer el título que Wix pasa al iframe como data-title
+    const iframeTitle = window.frameElement?.getAttribute("data-title") || "";
+
+    // 2. Buscar el número de personas en el título (ejemplo: "Pepito y Pepita | 3 PERSONAS")
+    let maxPersonas = 0;
+    const match = iframeTitle.match(/(\d+)\s*PERSONA/);
+    if (match) {
+      maxPersonas = parseInt(match[1]);
+    }
+
+    // 3. Llenar opciones del select
+    function llenarOpciones(max) {
+      personasSelect.innerHTML = "";
+      if (max === 0) {
+        personasSelect.innerHTML = '<option value="0">0</option>';
+        return;
+      }
+      let opciones = '<option value="">Selecciona una opción</option>';
+      for (let i = 1; i <= max; i++) {
+        opciones += `<option value="${i}">${i} persona${i>1?'s':''}</option>`;
+      }
+      personasSelect.innerHTML = opciones;
+    }
+    llenarOpciones(maxPersonas);
+
+    // 4. Si no asistirá → 0
+    respuestaSelect.addEventListener("change", () => {
+      if (respuestaSelect.value === "Lo siento, no podré asistir") {
+        personasSelect.innerHTML = '<option value="0">0</option>';
+      } else {
+        llenarOpciones(maxPersonas);
+      }
+    });
+
+    // 5. Enviar formulario
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      btnSubmit.disabled = true;
+      mensajeEspera.style.display = "block";
+
+      const formData = new FormData(form);
+      const nombre = formData.get("nombre");
+      const telefono = formData.get("telefono");
+      const respuesta = formData.get("respuesta");
+      const personas = formData.get("personas");
+
+      // Texto para WhatsApp
+      const texto = `${iframeTitle}
+NOMBRE: ${nombre}
+TELEFONO: ${telefono}
+RESPUESTA: ${respuesta}
+CONFIRMA NÚMERO DE ASISTENTES: ${personas}`;
+
+      // Guardar en Google Sheets
+      const data = new FormData();
+      data.append("nombre", nombre);
+      data.append("telefono", telefono);
+      data.append("respuesta", respuesta);
+      data.append("personas", personas);
+      data.append("titulo", iframeTitle);
+
+      fetch(scriptURL, { method: "POST", body: data })
+        .then(() => {
+          form.style.display = "none";
+          mensajeEspera.style.display = "none";
+          confirmacion.style.display = "block";
+
+          try {
+            window.location.href = `whatsapp://send?phone=${anfitrion}&text=${encodeURIComponent(texto)}`;
+            setTimeout(() => {
+              window.open(`https://wa.me/${anfitrion}?text=${encodeURIComponent(texto)}`, "_blank");
+            }, 600);
+          } catch (e) {
+            window.open(`https://wa.me/${anfitrion}?text=${encodeURIComponent(texto)}`, "_blank");
+          }
+        })
+        .catch(err => {
+          btnSubmit.disabled = false;
+          mensajeEspera.style.display = "none";
+          alert("Error al enviar: " + err.message);
+        });
+    });
+  </script>
+</body>
+</html>
